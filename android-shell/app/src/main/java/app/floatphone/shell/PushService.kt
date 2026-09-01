@@ -87,7 +87,7 @@ class PushService : Service() {
                 updateKeepAlive("未登录或站点不可达，稍后重试")
                 sleepSec(60); continue
             }
-            updateKeepAlive("已连接，等待角色消息")
+            updateKeepAlive("幽灵正在等您的消息")
             val closedNormally = runSocket(config)
             if (stopped) break
             updateKeepAlive("连接断开，重连中…")
@@ -276,7 +276,7 @@ class PushService : Service() {
     private fun buildKeepAliveNotification(text: String): Notification =
         NotificationCompat.Builder(this, CH_KEEPALIVE)
             .setSmallIcon(R.drawable.ic_stat)
-            .setContentTitle("小手机")
+            .setContentTitle("₊⁺♡̶₊幽灵正在想您★₊˚  ̥")
             .setContentText(text)
             .setOngoing(true)
             .setContentIntent(contentIntent())
