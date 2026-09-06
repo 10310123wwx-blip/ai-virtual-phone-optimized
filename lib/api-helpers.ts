@@ -76,7 +76,10 @@ export function buildRequestHeaders(config: ApiConfig, baseUrl: string): Record<
  * behind OpenAI-compatible endpoints should use Custom provider + baseUrl.
  */
 export function isNativeAnthropicApi(config: ApiConfig): boolean {
-    return config.provider === "Anthropic" && !config.baseUrl;
+    // 参考 Google Gemini 的处理：只要用户选择了 Anthropic provider，就走原生协议。
+    // 用户填的 baseUrl（如 CodeFlow 等中转站）由 determineBaseUrl 处理，不影响协议判断。
+    // 这样可以让支持原生协议转发的中转站（如 codeflow.asia）也能正常使用 Prompt Cache。
+    return config.provider === "Anthropic";
 }
 
 /**
