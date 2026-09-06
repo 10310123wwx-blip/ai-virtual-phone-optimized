@@ -587,7 +587,7 @@ function buildAnthropicRequest(
             {
                 type: "text",
                 text: system,
-                cache_control: { type: "ephemeral" },
+                cache_control: { type: "ephemeral", ttl: "1h" },
             },
         ];
     }
@@ -622,7 +622,7 @@ function compactAnthropicMessages(messages: LlmRequestMessage[]): Array<{ role: 
         const targetMessage = compacted[compacted.length - 4];
         const lastBlock = targetMessage.content[targetMessage.content.length - 1];
         if (lastBlock && typeof lastBlock === "object" && !Array.isArray(lastBlock)) {
-            (lastBlock as Record<string, unknown>).cache_control = { type: "ephemeral" };
+            (lastBlock as Record<string, unknown>).cache_control = { type: "ephemeral", ttl: "1h" };
         }
     }
     return compacted;
