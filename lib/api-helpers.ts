@@ -54,6 +54,7 @@ export function buildRequestHeaders(config: ApiConfig, baseUrl: string): Record<
         // Native Anthropic API uses x-api-key
         headers["x-api-key"] = config.apiKey;
         headers["anthropic-version"] = "2023-06-01";
+        headers["anthropic-beta"] = "prompt-caching-2024-07-31";
     } else {
         // All others (including Anthropic via proxy/relay) use Bearer token
         headers["Authorization"] = `Bearer ${config.apiKey}`;
@@ -209,7 +210,7 @@ export async function simpleLLMCall(
     }
 }
 
-export function extractUsage(data: Record<string, unknown>): { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | undefined {
+export function extractUsage(data: Record<string, unknown>): { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number } | undefined {
     if (!data) return undefined;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const d = data as any;
@@ -219,6 +220,8 @@ export function extractUsage(data: Record<string, unknown>): { prompt_tokens?: n
         prompt_tokens: usage.prompt_tokens ?? usage.input_tokens ?? usage.promptTokenCount,
         completion_tokens: usage.completion_tokens ?? usage.output_tokens ?? usage.candidatesTokenCount,
         total_tokens: usage.total_tokens ?? usage.totalTokenCount,
+        cache_creation_input_tokens: usage.cache_creation_input_tokens,
+        cache_read_input_tokens: usage.cache_read_input_tokens,
     };
 }
 

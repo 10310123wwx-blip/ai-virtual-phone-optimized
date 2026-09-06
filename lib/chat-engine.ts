@@ -1026,7 +1026,7 @@ export type LLMToolRequestResult = {
     truncatedToolCalls?: string[];
     rawResponse: string;
     providerKind: LlmProviderKind;
-    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number };
 };
 
 type StreamToolCallDraft = {
@@ -2154,7 +2154,7 @@ async function generateNativeChatCompletion(
                     {
                         onDelta: (text) => callbacks?.onStreamDelta?.(text),
                         // 流式下 onReasoningDelta 收到的是单段增量：本地累积后再喂 onReasoning，
-                        // 保证下游拿到的是完整思维链（与整段请求的 onReasoning 语义一致）。
+                        // 保证下游拿到的是完整思维链（与整段请求的 onReasoning 语义一致���。
                         // 预设开启「线上标签解析」时不透传原生思维链（改由下方标签提取）
                         onReasoningDelta: onlineThinkingEnabled ? undefined : (text) => { streamReasoning += text; callbacks?.onReasoning?.(streamReasoning); },
                     },
@@ -2518,7 +2518,7 @@ async function generateChatCompletionCore(
     const requestAppTags = mergeAppTags(options?.appTags, options?.promptProfile?.appTags, options?.appId ?? "chat");
 
     // 追问有自己的排期时兜底（followup:key），这里只为普通回复生成挂单。
-    // 不 await：挂单失败或慢都不拖累本地生成；生成先结束则通过 closed 标记补撤销。
+    // 不 await：挂单失败或慢��不拖累本地生成；生成先结束则通过 closed 标记补撤销。
     if (!session.isGroup && (options?.appId ?? "chat") === "chat" && !(requestAppTags ?? []).includes("followup")) {
         // 云端兜底可能在另一台机器上生成并经真实微信发送。把本轮最后一条
         // 用户输入/系统指令作为因果锚点带过去，避免回复拉回本地后因手机与

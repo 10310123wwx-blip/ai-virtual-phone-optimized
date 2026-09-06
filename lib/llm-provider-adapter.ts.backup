@@ -48,7 +48,7 @@ export type LlmParsedResponse = {
     reasoning?: string;
     openRouterReasoningDetails?: unknown[];
     toolCalls: LlmToolCall[];
-    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number };
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
     raw: unknown;
 };
 
@@ -581,16 +581,7 @@ function buildAnthropicRequest(
     if (enabled.has("temperature")) body.temperature = preset?.temperature ?? 0.8;
     if (preset && enabled.has("top_p")) body.top_p = preset.top_p ?? 1;
     if (enabled.has("top_k")) body.top_k = preset?.top_k ?? 0;
-    // Prompt Cache: system 消息用数组格式 + cache_control
-    if (system) {
-        body.system = [
-            {
-                type: "text",
-                text: system,
-                cache_control: { type: "ephemeral" },
-            },
-        ];
-    }
+    if (system) body.system = system;
     if (options.stream) body.stream = true;
     if (options.tools?.length) {
         body.tools = options.tools.map((tool) => ({
@@ -616,14 +607,6 @@ function compactAnthropicMessages(messages: LlmRequestMessage[]): Array<{ role: 
         const last = compacted[compacted.length - 1];
         if (last && last.role === role) last.content.push(...content);
         else compacted.push({ role, content });
-    }
-    // Prompt Cache: 给倒数第4条消息的最后一个 content block 加缓存标记
-    if (compacted.length >= 4) {
-        const targetMessage = compacted[compacted.length - 4];
-        const lastBlock = targetMessage.content[targetMessage.content.length - 1];
-        if (lastBlock && typeof lastBlock === "object" && !Array.isArray(lastBlock)) {
-            (lastBlock as Record<string, unknown>).cache_control = { type: "ephemeral" };
-        }
     }
     return compacted;
 }

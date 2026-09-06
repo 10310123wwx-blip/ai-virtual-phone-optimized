@@ -12,7 +12,7 @@ export type DebugInfo = {
     messages: { role: string; content: string; marker?: string }[];
     rawResponse: string;
     timestamp: string;
-    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number };
     /** 模型思维链（reasoning/CoT）原文，独立于回复内容存储，避免被清洗吞掉 */
     reasoning?: string;
     /** 调用来源：chat=聊天引擎、background=simpleLLMCall 后台功能（具体功能名看 characterName 标签）、qa=工坊答疑引擎 */
@@ -72,7 +72,7 @@ function truncateMessagesForLog(messages: DebugInfo["messages"]): DebugInfo["mes
     const totalChars = truncated.reduce((sum, message) => sum + message.content.length, 0);
     if (totalChars <= MAX_LOG_MESSAGES_TOTAL_CHARS || truncated.length <= 1) return truncated;
 
-    // 首条通常是系统提示，保留它和尽可能多的最新上下文；中间历史用一条说明代替。
+    // 首条通常是系统提示，保留它和尽可能多的最新上下文；中间历史用一条说明���替。
     const first = truncated[0];
     const tail: DebugInfo["messages"] = [];
     let usedChars = first.content.length;

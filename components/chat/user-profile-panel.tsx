@@ -442,7 +442,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
                             <Vibrate size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
                             <div className="flex flex-col flex-1 text-left gap-0.5">
                                 <span className="ts-14 font-semibold text-[var(--c-text-title)]">语音/视频来电振动</span>
-                                <span className="ts-11 text-[var(--c-text)] opacity-70">角色来电等待接听时手机振动（iOS 网页不支持振动）</span>
+                                <span className="ts-11 text-[var(--c-text)] opacity-70">角色来电等待接��时手机振动（iOS 网页不支持振动）</span>
                             </div>
                             <Toggle checked={callVibrationEnabled} onChange={handleCallVibrationToggle} />
                         </div>
@@ -676,7 +676,7 @@ function ApiLogViewer({ onBack }: { onBack: () => void }) {
 
     return (
         <PageShell
-            title="后台记录"
+            title="后台记���"
             onBack={onBack}
             className="absolute inset-0 z-[100]"
             rightAction={logs.length > 0 ? (
@@ -765,6 +765,12 @@ function ApiLogViewer({ onBack }: { onBack: () => void }) {
                                                     {log.model && <span>Model: {log.model}</span>}
                                                     {log.usage && (
                                                         <span>Tokens: {log.usage.prompt_tokens ?? "—"} / {log.usage.completion_tokens ?? "—"} / {log.usage.total_tokens ?? "—"}</span>
+                                                    )}
+                                                    {log.usage?.cache_read_input_tokens && (
+                                                        <span className="text-emerald-400">💾 缓存命中: {log.usage.cache_read_input_tokens.toLocaleString()}</span>
+                                                    )}
+                                                    {log.usage?.cache_creation_input_tokens && (
+                                                        <span className="text-amber-400">✨ 创建缓存: {log.usage.cache_creation_input_tokens.toLocaleString()}</span>
                                                     )}
                                                 </div>
                                             </div>

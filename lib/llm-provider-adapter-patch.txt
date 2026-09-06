@@ -1,0 +1,22 @@
+--- 原代码（第582-586行）
+    if (enabled.has("temperature")) body.temperature = preset?.temperature ?? 0.8;
+    if (preset && enabled.has("top_p")) body.top_p = preset.top_p ?? 1;
+    if (enabled.has("top_k")) body.top_k = preset?.top_k ?? 0;
+    if (system) body.system = system;
+    if (options.stream) body.stream = true;
+
+--- 新代码
+    if (enabled.has("temperature")) body.temperature = preset?.temperature ?? 0.8;
+    if (preset && enabled.has("top_p")) body.top_p = preset.top_p ?? 1;
+    if (enabled.has("top_k")) body.top_k = preset?.top_k ?? 0;
+    // Prompt Cache: system 消息用数组格式 + cache_control
+    if (system) {
+        body.system = [
+            {
+                type: "text",
+                text: system,
+                cache_control: { type: "ephemeral" },
+            },
+        ];
+    }
+    if (options.stream) body.stream = true;
