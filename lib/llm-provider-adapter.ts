@@ -801,7 +801,7 @@ function parseOpenAIToolCall(value: unknown): LlmToolCall {
 }
 
 function parseAnthropicResponse(data: unknown): LlmParsedResponse {
-    const d = data as { content?: unknown[]; usage?: { input_tokens?: number; output_tokens?: number } };
+    const d = data as { content?: unknown[]; usage?: { input_tokens?: number; output_tokens?: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number } };
     const blocks = Array.isArray(d.content) ? d.content : [];
     let content = "";
     let reasoning = "";
@@ -826,6 +826,8 @@ function parseAnthropicResponse(data: unknown): LlmParsedResponse {
             prompt_tokens: d.usage.input_tokens,
             completion_tokens: d.usage.output_tokens,
             total_tokens: (d.usage.input_tokens ?? 0) + (d.usage.output_tokens ?? 0),
+            cache_creation_input_tokens: d.usage.cache_creation_input_tokens,
+            cache_read_input_tokens: d.usage.cache_read_input_tokens,
         } : undefined,
         raw: data,
     };
