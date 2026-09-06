@@ -349,6 +349,7 @@ async function requestQaCompletion(
     };
     try {
         const streamRequest = buildProviderRequest(apiConfig, null, messages, { stream: true, maxTokens });
+        console.log('[QA Debug] provider:', apiConfig.provider, 'providerKind:', streamRequest.providerKind, 'baseUrl:', apiConfig.baseUrl);
         const result = await streamQaProviderRequest(streamRequest, { signal: options?.signal }, options?.callbacks);
         if (!result.content.trim()) throw new Error("LLM 返回了空内容");
         logQaCall({ model: apiConfig.defaultModel, messages: streamRequest.messagesForLog, rawResponse: result.content, reasoning: result.reasoning });
@@ -357,6 +358,7 @@ async function requestQaCompletion(
         if (options?.signal?.aborted) throw streamError;
         await options?.callbacks?.onStreamFallback?.(formatQaErrorMessage(streamError));
         const request = buildProviderRequest(apiConfig, null, messages, { maxTokens });
+        console.log('[QA Debug] provider:', apiConfig.provider, 'providerKind:', request.providerKind, 'baseUrl:', apiConfig.baseUrl);
         const response = await fetchLlmPayload(request, { signal: options?.signal });
         if (!response.ok) throw new Error(`API ${response.status}: ${await response.text()}`);
         const parsed = parseProviderResponse(request.providerKind, await response.json());
@@ -424,10 +426,10 @@ function buildQaOutputBudgetPrompt(): string {
     const budget = getQaMaxOutputTokens();
     if (budget) {
         lines.push(
-            `本会话你单次回复的输出上限被设置为 ${budget.toLocaleString()} token（约 ${Math.round(budget * 0.75).toLocaleString()}–${budget.toLocaleString()} 个汉字），写超会被服务端安全截断，截断后系统会自动让你续写，不会报废已完成的部分。`,
+            `本会话你单次回复的输出上限被设置为 ${budget.toLocaleString()} token（约 ${Math.round(budget * 0.75).toLocaleString()}–${budget.toLocaleString()} 个汉字），写超会被服务端安全截断，截断后系统会自动让你续写，不��报废已完成的部分。`,
         );
     } else {
-        lines.push("模型单次回复有输出长度���限（max_tokens�����，一次写太长会被截断。");
+        lines.push("模型单次回复有输出长度���限（max_tokens������，一次写太长会被截断。");
     }
     lines.push("写入策略按优先级：");
     lines.push("① 改已有内容一律「编辑」（find/replace）——只输出改动片段，绝不整体重写大文件；");
