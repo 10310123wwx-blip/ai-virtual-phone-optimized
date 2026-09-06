@@ -377,7 +377,7 @@ export async function callQaChat(
     const apiConfig = requireQaApiConfig();
     const latestUser = [...history].reverse().find((m) => m.role === "user");
     const messages: LlmRequestMessage[] = [
-        { role: "system", content: buildQaSystemPrompt(latestUser?.content ?? "") },
+        ...buildQaSystemPrompt(latestUser?.content ?? ""),
         ...historyToRequestMessages(history),
     ];
     return requestQaCompletion(apiConfig, messages, options);
@@ -427,7 +427,7 @@ function buildQaOutputBudgetPrompt(): string {
             `本会话你单次回复的输出上限被设置为 ${budget.toLocaleString()} token（约 ${Math.round(budget * 0.75).toLocaleString()}–${budget.toLocaleString()} 个汉字），写超会被服务端安全截断，截断后系统会自动让你续写，不会报废已完成的部分。`,
         );
     } else {
-        lines.push("模型单次回复有输出长度上限（max_tokens），一次写太长会被截断。");
+        lines.push("模型单次回复有输出长度���限（max_tokens�����，一次写太长会被截断。");
     }
     lines.push("写入策略按优先级：");
     lines.push("① 改已有内容一律「编辑」（find/replace）——只输出改动片段，绝不整体重写大文件；");
@@ -569,7 +569,7 @@ type QaAgentOptions = {
     signal?: AbortSignal;
     callbacks?: QaAgentCallbacks;
     autoCommit?: boolean;
-    /** 持久化上下文：提供时作为模型侧完整历史（替代 history），本轮新增条目经 onContext 回报 */
+    /** 持久化上下文：提供时作为模型侧完整历史（替代 history），本轮新增条��经 onContext ��报 */
     context?: QaContextEntry[];
     onContext?: (entry: QaContextEntry) => void;
 };
@@ -603,7 +603,12 @@ async function callQaAgentText(apiConfig: ApiConfig, history: QaEngineMessage[],
     const latestUser = options?.context
         ? [...options.context].reverse().find((m) => m.role === "user")
         : [...history].reverse().find((m) => m.role === "user");
-    const systemPrompt = `${buildQaSystemPrompt(latestUser?.content ?? "")}\n\n${buildQaToolsPrompt()}\n\n${buildQaOutputBudgetPrompt()}`;
+    const systemBlocks = buildQaSystemPrompt(latestUser?.content ?? "");
+    // 在最后一个 system block 追加工具和输出预算说明
+    if (systemBlocks.length > 0) {
+        const lastBlock = systemBlocks[systemBlocks.length - 1];
+        lastBlock.content += `\n\n${buildQaToolsPrompt()}\n\n${buildQaOutputBudgetPrompt()}`;
+    }
     const working: LlmRequestMessage[] = options?.context
         ? contextToTextMessages(options.context)
         : historyToRequestMessages(history);
@@ -621,7 +626,7 @@ async function callQaAgentText(apiConfig: ApiConfig, history: QaEngineMessage[],
             await callbacks?.onDelta?.(text);
         }, (holding) => callbacks?.onToolDrafting?.(holding));
 
-        const messages: LlmRequestMessage[] = [{ role: "system", content: systemPrompt }, ...working];
+        const messages: LlmRequestMessage[] = [...systemBlocks, ...working];
         const result = await requestQaCompletion(apiConfig, messages, {
             signal: options?.signal,
             callbacks: {
@@ -679,11 +684,12 @@ async function callQaAgentNative(apiConfig: ApiConfig, history: QaEngineMessage[
         ? [...options.context].reverse().find((m) => m.role === "user")
         : [...history].reverse().find((m) => m.role === "user");
     // 原生协议下工具经请求体声明，系统提示词只保留身份与行为规则
-    const systemPrompt = [
-        buildQaSystemPrompt(latestUser?.content ?? ""),
-        "你有原生工具可以调用（见请求中的 tools 定义）。排查问题先分诊再选工具，不要凭空猜测、也不要把工具挨个跑一遍：某个 APP/游戏/剧场自身行为不对是它的代码问题，「读取」源码定位；环境问题（API 连不上/存储满/页面崩溃/设备兼容）才用「环境体检」；产品用法问题查「答疑文档」。收到工具结果后用人话向用户解释结论和建议。",
-        buildQaOutputBudgetPrompt(),
-    ].join("\n\n");
+    const systemBlocks = buildQaSystemPrompt(latestUser?.content ?? "");
+    // 在最后一个 system block 追加工具说明和输出预算
+    if (systemBlocks.length > 0) {
+        const lastBlock = systemBlocks[systemBlocks.length - 1];
+        lastBlock.content += `\n\n你有原生工具可以调用（见请求中的 tools 定义）。排查问题先分诊再选工具，不要凭空猜测、也不要把工具挨个跑一遍：某个 APP/游戏/剧场自身行为不对是它的代码问题，「读取」源码定位；环境问题（API 连不上/存储满/页面崩溃/设备兼容）才用「环境体检」；产品用法问题查「答疑文档」。收到工具结果后用人话向用户解释结论和建议。\n\n${buildQaOutputBudgetPrompt()}`;
+    }
     const working: LlmRequestMessage[] = options?.context
         ? contextToNativeMessages(options.context)
         : historyToRequestMessages(history);
@@ -704,7 +710,7 @@ async function callQaAgentNative(apiConfig: ApiConfig, history: QaEngineMessage[
             await callbacks?.onDelta?.(text);
         }, (holding) => callbacks?.onToolDrafting?.(holding));
 
-        const messages: LlmRequestMessage[] = [{ role: "system", content: systemPrompt }, ...working];
+        const messages: LlmRequestMessage[] = [...systemBlocks, ...working];
         let result: LLMToolRequestResult;
         try {
             result = await sendLLMToolStreamRequest(
@@ -797,7 +803,7 @@ async function callQaAgentNative(apiConfig: ApiConfig, history: QaEngineMessage[
             await callbacks?.onToolStart?.(displayName, nc.args);
             const toolResult = await runQaToolCall({ name: displayName, args: nc.args }, buildQaToolContext(options));
             await callbacks?.onToolDone?.(displayName, toolResult.success, toolResult.resultForModel);
-            const content = toolResult.success ? toolResult.resultForModel : `（失败）${toolResult.resultForModel}`;
+            const content = toolResult.success ? toolResult.resultForModel : `��失败）${toolResult.resultForModel}`;
             working.push({ role: "tool", content, name: nc.name, toolCallId: nc.id });
             options?.onContext?.({ role: "tool", content, name: nc.name, toolCallId: nc.id });
         }
