@@ -49,6 +49,7 @@ export type LlmParsedResponse = {
     openRouterReasoningDetails?: unknown[];
     toolCalls: LlmToolCall[];
     usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number };
+    protocol?: LlmProviderKind;
     raw: unknown;
 };
 
@@ -795,6 +796,7 @@ function parseOpenAICompatibleResponse(data: unknown): LlmParsedResponse {
         openRouterReasoningDetails,
         toolCalls,
         usage: d.usage,
+        protocol: "openai-compatible",
         raw: data,
     };
 }
@@ -856,6 +858,7 @@ function parseAnthropicResponse(data: unknown): LlmParsedResponse {
             cache_creation_input_tokens: d.usage.cache_creation_input_tokens,
             cache_read_input_tokens: d.usage.cache_read_input_tokens,
         } : undefined,
+        protocol: "anthropic",
         raw: data,
     };
 }
@@ -891,6 +894,7 @@ function parseGeminiResponse(data: unknown): LlmParsedResponse {
             completion_tokens: d.usageMetadata.candidatesTokenCount,
             total_tokens: d.usageMetadata.totalTokenCount,
         } : undefined,
+        protocol: "gemini",
         raw: data,
     };
 }

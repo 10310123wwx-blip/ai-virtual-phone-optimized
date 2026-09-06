@@ -985,6 +985,7 @@ export async function sendLLMRequest(
             characterName: meta?.characterName,
             ...apiLogChannelFor(options),
             model: config.defaultModel,
+            protocol: parsed.protocol,
             messages: sanitizedMessages,
             rawResponse: rawOutput,
             usage: parsed.usage,
@@ -1126,7 +1127,7 @@ export async function sendLLMToolStreamRequest(
         const decoder = new TextDecoder();
         let buffer = "";
         // 容错解析：中转把超长工具参数 JSON 行切开时做碎片重组，
-        // 不再因单行 JSON Parse error 杀掉整条流（写 APP 大参数时高发）
+        // 不再因单行 JSON Parse error 杀掉整条流（写 APP 大参��时高发）
         const sseParser = createSseJsonParser();
         const handleParsedDelta = async (data: unknown) => {
             {
@@ -1305,6 +1306,7 @@ export async function sendLLMToolRequest(
             characterName: meta?.characterName,
             ...apiLogChannelFor(options),
             model: config.defaultModel,
+            protocol: parsed.protocol,
             messages: sanitizedMessages,
             rawResponse,
             usage: parsed.usage,
@@ -1826,7 +1828,7 @@ export async function buildChatPromptMessages(
                 createdAt: new Date().toISOString(),
                 mediaType: "image",
                 mediaUrl: imageUrl,
-                mediaData: { label: "视频通话当前画面" },
+                mediaData: { label: "视频通话当���画面" },
             })),
         ]
         : history;
@@ -2154,7 +2156,7 @@ async function generateNativeChatCompletion(
                     {
                         onDelta: (text) => callbacks?.onStreamDelta?.(text),
                         // 流式下 onReasoningDelta 收到的是单段增量：本地累积后再喂 onReasoning，
-                        // 保证下游拿到的是完整思维链（与整段请求的 onReasoning 语义一致���。
+                        // 保证下游��到的是完整思维链（与整段请求的 onReasoning 语义一致���。
                         // 预设开启「线上标签解析」时不透传原生思维链（改由下方标签提取）
                         onReasoningDelta: onlineThinkingEnabled ? undefined : (text) => { streamReasoning += text; callbacks?.onReasoning?.(streamReasoning); },
                     },
@@ -2517,7 +2519,7 @@ async function generateChatCompletionCore(
     const { llmMessages, character, config, preset, regexes, userIdentity, toolsEnabled } = await buildChatPromptMessages(session, history, options);
     const requestAppTags = mergeAppTags(options?.appTags, options?.promptProfile?.appTags, options?.appId ?? "chat");
 
-    // 追问有自己的排期时兜底（followup:key），这里只为普通回复生成挂单。
+    // 追问有���己的排期时兜底（followup:key），���里只为普通回复生成挂单。
     // 不 await：挂单失败或慢��不拖累本地生成；生成先结束则通过 closed 标记补撤销。
     if (!session.isGroup && (options?.appId ?? "chat") === "chat" && !(requestAppTags ?? []).includes("followup")) {
         // 云端兜底可能在另一台机器上生成并经真实微信发送。把本轮最后一条

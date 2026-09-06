@@ -323,7 +323,7 @@ const QaMessageItem = memo(function QaMessageItem({
       )}
     </div>
   );
-  // 时序分段渲染：文字与工具行按实际发生顺序交错（连续工具行合并成一组���；
+  // 时序分段渲染：文字与工具行按实际发生顺序交错（连续工具行合并成一组�����；
   // 旧消息没有 segments 时回退「工具在顶、文字在下」布局。
   // hooks 必须在 user 分支 early-return 之前调用（rules-of-hooks）
   const segmentBlocks = useMemo(() => {
@@ -1658,6 +1658,7 @@ function QaApiLogSheet({ onClose, onNotice }: { onClose: () => void; onNotice?: 
                           <span className="qa-log-item-time">{formatTime(log.timestamp)}</span>
                           <span className="qa-log-item-detail">
                             {log.model ? `Model: ${log.model}` : ""}
+                            {log.protocol ? ` (${log.protocol})` : ""}
                             {log.model && log.messages.length ? " · " : ""}
                             {log.messages.length} 条消息
                             {log.usage ? ` · Tokens: ${log.usage.prompt_tokens ?? "—"} / ${log.usage.completion_tokens ?? "—"} / ${log.usage.total_tokens ?? "—"}` : ""}
