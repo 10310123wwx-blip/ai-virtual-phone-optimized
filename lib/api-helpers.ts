@@ -4,8 +4,20 @@
 
 import type { ApiConfig } from "./settings-types";
 import { pushApiLog } from "./api-log-store";
+import { createHash } from "crypto";
 
 const SIMPLE_ANTHROPIC_AUTO_MAX_TOKENS = 8192;
+
+/**
+ * Generate a stable session ID for Anthropic cache scope.
+ * Ensures the same API key + base URL always gets the same session ID,
+ * allowing cache reuse across requests (doc: 第 125-141 行).
+ */
+function generateStableSessionId(apiKey: string, baseUrl: string): string {
+    const namespace = "ai-virtual-phone:anthropic-cache";
+    const input = `${namespace}:${apiKey.slice(-8)}:${baseUrl}`;
+    return createHash("sha256").update(input).digest("hex").slice(0, 32);
+}
 
 /**
  * Resolve the base URL for an API config.
@@ -55,8 +67,16 @@ export function buildRequestHeaders(config: ApiConfig, baseUrl: string): Record<
         headers["x-api-key"] = config.apiKey;
         headers["anthropic-version"] = "2023-06-01";
         headers["anthropic-beta"] = "prompt-caching-2024-07-31";
+    } else if (config.provider === "Anthropic" && config.baseUrl) {
+        // Anthropic via proxy/relay (like CodeFlow)
+        headers["Authorization"] = `Bearer ${config.apiKey}`;
+        headers["anthropic-version"] = "2023-06-01";
+        headers["anthropic-beta"] = "prompt-caching-2024-07-31";
+        // Stable session ID for cache scope (doc: 第 125-141 行)
+        const sessionId = generateStableSessionId(config.apiKey, config.baseUrl);
+        headers["X-Claude-Code-Session-Id"] = sessionId;
     } else {
-        // All others (including Anthropic via proxy/relay) use Bearer token
+        // All other providers use Bearer token
         headers["Authorization"] = `Bearer ${config.apiKey}`;
     }
 
@@ -89,7 +109,7 @@ export function isNativeAnthropicApi(config: ApiConfig): boolean {
  */
 export function isNativeGoogleApi(config: ApiConfig): boolean {
     // 之前要求 baseUrl 必须为空才认为是原生 Gemini，这导致中转站（如 dzzi.ai 暴露的 /v1beta 端点）
-    // 没法被识别成原生 Gemini，只能走 OpenAI 兼容路径，进而 thoughtSignature 丢失、多轮工具调用失败。
+    // 没法被识别��原生 Gemini，只能走 OpenAI 兼容路径，进而 thoughtSignature 丢失、多轮工具调用失败。
     // 现在只要 provider=Google 就走原生 Gemini 协议；用户填的 baseUrl 由 determineBaseUrl 处理。
     return config.provider === "Google";
 }
