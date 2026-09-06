@@ -207,13 +207,32 @@ function ensureProviderHasUserMessage(messages: LlmRequestMessage[]): LlmRequest
  * system / systemInstruction；插在历史中间的 system（@Depth 注入、系统指令等）
  * 原位转为 user 角色，保留位置语义，避免被整体挪到最前面。
  */
-function splitLeadingSystemMessages(messages: LlmRequestMessage[]): { systemText: string; rest: LlmRequestMessage[] } {
+function splitLeadingSystemMessages(messages: LlmRequestMessage[]): { systemText: string; systemBlocks: Array<{text: string; cacheable: boolean}>; rest: LlmRequestMessage[] } {
     let leading = 0;
     while (leading < messages.length && messages[leading].role === "system") leading += 1;
-    const systemText = messages.slice(0, leading)
-        .map((message) => textFromContent(message.content))
-        .filter(Boolean)
-        .join("\n\n");
+    
+    // 识别可缓存的 system 消息类型（固定内容）
+    const cacheableMarkers = new Set([
+        "charDescription",
+        "charPersonality",
+        "personaDescription",
+        "worldInfoBefore",
+        "worldInfoAfter",
+        "characterRelations",
+        "dwellingContext",
+    ]);
+    
+    const systemBlocks = messages.slice(0, leading)
+        .map((message) => {
+            const text = textFromContent(message.content);
+            if (!text) return null;
+            const cacheable = message.marker ? cacheableMarkers.has(message.marker) : false;
+            return { text, cacheable };
+        })
+        .filter((block): block is {text: string; cacheable: boolean} => block !== null);
+    
+    const systemText = systemBlocks.map(b => b.text).join("\n\n");
+    
     const rest = messages.slice(leading).map((message) => message.role === "system"
         ? {
             role: "user" as const,
@@ -221,7 +240,7 @@ function splitLeadingSystemMessages(messages: LlmRequestMessage[]): { systemText
             marker: message.marker ? `${message.marker} | protocol:user-from-system` : "protocol:user-from-system",
         }
         : message);
-    return { systemText, rest };
+    return { systemText, systemBlocks, rest };
 }
 
 /** 把 multipart content 里的图片 part 压平成文本占位（图像识别未启用时使用）。 */
@@ -566,7 +585,7 @@ function buildAnthropicRequest(
     messages: LlmRequestMessage[],
     options: ProviderRequestOptions,
 ): LlmRequestPayload {
-    const { systemText: system, rest } = splitLeadingSystemMessages(messages);
+    const { systemBlocks, rest } = splitLeadingSystemMessages(messages);
     const bodyMessages = compactAnthropicMessages(rest);
     const enabled = resolveEnabledGenerationParameters(preset);
     const body: Record<string, unknown> = {
@@ -581,15 +600,29 @@ function buildAnthropicRequest(
     if (enabled.has("temperature")) body.temperature = preset?.temperature ?? 0.8;
     if (preset && enabled.has("top_p")) body.top_p = preset.top_p ?? 1;
     if (enabled.has("top_k")) body.top_k = preset?.top_k ?? 0;
-    // Prompt Cache: system 消息用数组格式 + cache_control
-    if (system) {
-        body.system = [
-            {
+    // Prompt Cache: 拆分固定和动态 system 消息，只缓存固定部分
+    if (systemBlocks.length > 0) {
+        // 找到最后一个可缓存的 block
+        let lastCacheableIdx = -1;
+        for (let i = systemBlocks.length - 1; i >= 0; i--) {
+            if (systemBlocks[i].cacheable) {
+                lastCacheableIdx = i;
+                break;
+            }
+        }
+        
+        body.system = systemBlocks.map((block, idx) => {
+            const systemBlock: Record<string, unknown> = {
                 type: "text",
-                text: system,
-                cache_control: { type: "ephemeral", ttl: "1h" },
-            },
-        ];
+                text: block.text,
+            };
+            // 只在最后一个可缓存块上标记 cache_control
+            // （根据 Anthropic 文档，缓存断点应该在稳定内容的末尾）
+            if (idx === lastCacheableIdx) {
+                systemBlock.cache_control = { type: "ephemeral" };
+            }
+            return systemBlock;
+        });
     }
     if (options.stream) body.stream = true;
     if (options.tools?.length) {
@@ -617,14 +650,8 @@ function compactAnthropicMessages(messages: LlmRequestMessage[]): Array<{ role: 
         if (last && last.role === role) last.content.push(...content);
         else compacted.push({ role, content });
     }
-    // Prompt Cache: 给倒数第4条消息的最后一个 content block 加缓存标记
-    if (compacted.length >= 4) {
-        const targetMessage = compacted[compacted.length - 4];
-        const lastBlock = targetMessage.content[targetMessage.content.length - 1];
-        if (lastBlock && typeof lastBlock === "object" && !Array.isArray(lastBlock)) {
-            (lastBlock as Record<string, unknown>).cache_control = { type: "ephemeral", ttl: "1h" };
-        }
-    }
+    // Prompt Cache: 不再标记动态消息位置，只缓存固定的 system blocks
+    // （倒数第N条消息的位置会随对话变化，导致缓存失效）
     return compacted;
 }
 
